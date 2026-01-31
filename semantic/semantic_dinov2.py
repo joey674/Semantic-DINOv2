@@ -64,7 +64,11 @@ backbone_arch = backbone_archs[BACKBONE_SIZE]
 backbone_name = f"dinov2_{backbone_arch}"
 
 # Keep using torch.hub to load the backbone as requested
-backbone_model = torch.hub.load(repo_or_dir="facebookresearch/dinov2", model=backbone_name)
+CHECKPOINT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "checkpoint")
+
+backbone_model = torch.hub.load(repo_or_dir="facebookresearch/dinov2", model=backbone_name, pretrained=False)
+backbone_checkpoint_path = os.path.join(CHECKPOINT_DIR, f"{backbone_name}_pretrain.pth")
+backbone_model.load_state_dict(torch.load(backbone_checkpoint_path))
 backbone_model.eval()
 backbone_model.cuda()
 
@@ -84,18 +88,16 @@ HEAD_DATASET = "voc2012" # in ("ade20k", "voc2012")
 HEAD_TYPE = "ms" # in ("ms, "linear")
 
 
-DINOV2_BASE_URL = "https://dl.fbaipublicfiles.com/dinov2"
-head_config_url = f"{DINOV2_BASE_URL}/{backbone_name}/{backbone_name}_{HEAD_DATASET}_{HEAD_TYPE}_config.py"
-head_checkpoint_url = f"{DINOV2_BASE_URL}/{backbone_name}/{backbone_name}_{HEAD_DATASET}_{HEAD_TYPE}_head.pth"
+head_config_path = os.path.join(CHECKPOINT_DIR, f"{backbone_name}_{HEAD_DATASET}_{HEAD_TYPE}_config.py")
+head_checkpoint_path = os.path.join(CHECKPOINT_DIR, f"{backbone_name}_{HEAD_DATASET}_{HEAD_TYPE}_head.pth")
 
-cfg_str = load_config_from_url(head_config_url)
-cfg = mmcv.Config.fromstring(cfg_str, file_format=".py")
+cfg = mmcv.Config.fromfile(head_config_path)
 if HEAD_TYPE == "ms":
     cfg.data.test.pipeline[1]["img_ratios"] = cfg.data.test.pipeline[1]["img_ratios"][:HEAD_SCALE_COUNT]
     print("scales:", cfg.data.test.pipeline[1]["img_ratios"])
 
 model = create_segmenter(cfg, backbone_model=backbone_model)
-load_checkpoint(model, head_checkpoint_url, map_location="cpu")
+load_checkpoint(model, head_checkpoint_path, map_location="cpu")
 model.cuda()
 model.eval()
 
@@ -104,15 +106,8 @@ model.eval()
 from PIL import Image
 
 
-def load_image_from_url(url: str) -> Image:
-    with urllib.request.urlopen(url) as f:
-        return Image.open(f).convert("RGB")
-
-
-EXAMPLE_IMAGE_URL = "https://dl.fbaipublicfiles.com/dinov2/images/example.jpg"
-
-
-image = load_image_from_url(EXAMPLE_IMAGE_URL)
+image_path = os.path.join(CHECKPOINT_DIR, "example.jpg")
+image = Image.open(image_path).convert("RGB")
 
 # ########################################
 # run segmentation
@@ -138,5 +133,5 @@ segmentation_logits = inference_segmentor(model, array)[0]
 segmented_image = render_segmentation(segmentation_logits, HEAD_DATASET)
 end_time = time.time()
 print(f"Segmentation took {end_time - start_time:.2f} seconds")
-segmented_image.save("segmented.png")
-print("saved segmented.png")
+segmented_image.save("/home/zhouyi/repo/Model_dinov2/semantic/output/segmented.png")
+print("saved /home/zhouyi/repo/Model_dinov2/semantic/output/segmented.png")
