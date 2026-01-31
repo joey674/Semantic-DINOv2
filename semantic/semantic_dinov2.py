@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from mmseg.apis import init_segmentor, inference_segmentor
 
 # Import from extracted source
+import dinov2_seg
 import dinov2_seg.models
 
 # 由于输出的语义分割图大小需要是patch size(14)的整数倍，因此需要在输入图像上进行中心填充
@@ -104,7 +105,6 @@ model.eval()
 ########################################
 # load sample image
 from PIL import Image
-
 
 image_path = os.path.join(CHECKPOINT_DIR, "example.jpg")
 image = Image.open(image_path).convert("RGB")
